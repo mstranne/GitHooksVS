@@ -6,6 +6,9 @@ using Directory = System.IO.Directory;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.PlatformUI;
 using System.Linq;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio;
 
 namespace GitHooksVS
 {
@@ -144,18 +147,23 @@ namespace GitHooksVS
             else if (e.ChangeType == WatcherChangeTypes.Created)
             {
                 Logger.Instance.WriteLine($"File {e.ChangeType}: {e.FullPath}", LogLevel.DEBUG_MESSAGE);
-                List<String> scripts = GitHookManager.GetValidShScripts(Path.Combine(gitVSHookFolderPath, hookFolder));
-                GitHookManager.CreateGitHookScript(scripts, gitHookFolderPath, hookType);
-                ConfigManager.Instance.AddScriptEntry(hookType, e.FullPath, true);
+
+                bool enableScript = ShowEnableScriptDialog(Path.GetFileName(e.FullPath));
+                ConfigManager.Instance.AddScriptEntry(hookType, e.FullPath, enableScript);
+
+                if(enableScript)
+                {
+                    var enabledScipts = ConfigManager.Instance.GetEnabledScriptEntries(hookType);
+                    GitHookManager.CreateGitHookScript(enabledScipts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
+                }
 
             }
             else if (e.ChangeType == WatcherChangeTypes.Deleted)
             {
                 Logger.Instance.WriteLine($"File {e.ChangeType}: {e.FullPath}", LogLevel.DEBUG_MESSAGE);
-
-                List<String> scripts = GitHookManager.GetValidShScripts(Path.Combine(gitVSHookFolderPath, hookFolder));
-                GitHookManager.CreateGitHookScript(scripts, gitHookFolderPath, hookType);
                 ConfigManager.Instance.DeleteScriptEntry(hookType, e.FullPath);
+                var enabledScipts = ConfigManager.Instance.GetEnabledScriptEntries(hookType);
+                GitHookManager.CreateGitHookScript(enabledScipts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
             }
         }
 
@@ -211,7 +219,8 @@ namespace GitHooksVS
                     {
                         if (!ConfigManager.Instance.ScriptEntryExists(hookType, script))
                         {
-                            newScripts.Add(new ScriptEntry { FilePath = script, Enabled = true });
+                            bool enableScript = ShowEnableScriptDialog(Path.GetFileName(script));
+                            newScripts.Add(new ScriptEntry { FilePath = script, Enabled = enableScript });
                         }
                     }
 
@@ -232,16 +241,36 @@ namespace GitHooksVS
                         }
 
                         var enabledScripts = ConfigManager.Instance.GetEnabledScriptEntries(hookType);
-                        var allScripts = enabledScripts.Concat(newScripts).ToList();
+                        var allScripts = enabledScripts.Concat(newScripts.Where(s => s.Enabled)).ToList();
                         GitHookManager.CreateGitHookScript(allScripts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
 
                         foreach (var script in newScripts)
-                        {
+                        {                            
                             ConfigManager.Instance.AddScriptEntry(hookType, script.FilePath, script.Enabled);
                         }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Shows a message box to the user to decide whether a new script should be enabled or disabled.
+        /// </summary>
+        /// <param name="scriptName">The name of the new script.</param>
+        /// <returns>True if the script should be enabled; otherwise, false.</returns>
+        private bool ShowEnableScriptDialog(string scriptName)
+        {
+            string message = $"Do you want to enable the new script: {scriptName} ?\n";
+            string title = "Enable New Script";
+            var result = VsShellUtilities.ShowMessageBox(
+                ServiceProvider.GlobalProvider,
+                message,
+                title,
+                OLEMSGICON.OLEMSGICON_QUERY,
+                OLEMSGBUTTON.OLEMSGBUTTON_YESNO,
+                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+
+            return result == (int)VSConstants.MessageBoxResult.IDYES;
         }
 
     }
