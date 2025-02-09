@@ -20,6 +20,13 @@ namespace GitHooksVS
 
     internal class ConfigManager
     {
+        /// <summary>
+        ///  implementation ensures that the singleton instance is created in a thread-safe manner 
+        ///  without requiring explicit locks or synchronization. This is particularly important in 
+        ///  multithreaded applications where multiple threads might try to access the singleton instance simultaneously.
+        ///  
+        /// Lazy<T> ensures that the singleton instance is only created when it is first accessed.
+        /// </summary>
         private static readonly Lazy<ConfigManager> instance = new Lazy<ConfigManager>(() => new ConfigManager());
         private string configFilePath;
         private Config config;
@@ -99,6 +106,20 @@ namespace GitHooksVS
         }
 
         /// <summary>
+        /// Gets the list of enabled script entries for the specified hook type.
+        /// </summary>
+        /// <param name="hookType">The hook type.</param>
+        /// <returns>The list of enabled script entries for the specified hook type.</returns>
+        public List<ScriptEntry> GetEnabledScriptEntries(HookType hookType)
+        {
+            if (config.HookScripts.ContainsKey(hookType))
+            {
+                return config.HookScripts[hookType].Where(e => e.Enabled).ToList();
+            }
+            return new List<ScriptEntry>();
+        }
+
+        /// <summary>
         /// Checks if a script entry with the specified hook type and file path exists.
         /// </summary>
         /// <param name="hookType">The hook type.</param>
@@ -122,16 +143,18 @@ namespace GitHooksVS
             {
                 var json = File.ReadAllText(configFilePath);
                 config = JsonConvert.DeserializeObject<Config>(json) ?? new Config();
+                Logger.Instance.WriteLine("Config loaded!", LogLevel.DEBUG_MESSAGE);
             }
         }
 
         /// <summary>
         /// Saves the configuration to the file.
         /// </summary>
-        private void SaveConfig()
+        public void SaveConfig()
         {
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
             File.WriteAllText(configFilePath, json);
+            Logger.Instance.WriteLine("Config saved!", LogLevel.DEBUG_MESSAGE);
         }
     }
 }

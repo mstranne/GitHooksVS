@@ -5,6 +5,7 @@ using Path = System.IO.Path;
 using Directory = System.IO.Directory;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.PlatformUI;
+using System.Linq;
 
 namespace GitHooksVS
 {
@@ -62,6 +63,8 @@ namespace GitHooksVS
                     return;
 
                 ConfigManager.Instance.Initialize(Path.Combine(gitVSHookFolderPath, "config.json"));
+
+                ProcessGitHookFolder(gitVSHookFolderPath);
 
                 initialized = true;
             }
@@ -143,6 +146,7 @@ namespace GitHooksVS
                 Logger.Instance.WriteLine($"File {e.ChangeType}: {e.FullPath}", LogLevel.DEBUG_MESSAGE);
                 List<String> scripts = GitHookManager.GetValidShScripts(Path.Combine(gitVSHookFolderPath, hookFolder));
                 GitHookManager.CreateGitHookScript(scripts, gitHookFolderPath, hookType);
+                ConfigManager.Instance.AddScriptEntry(hookType, e.FullPath, true);
 
             }
             else if (e.ChangeType == WatcherChangeTypes.Deleted)
@@ -151,6 +155,7 @@ namespace GitHooksVS
 
                 List<String> scripts = GitHookManager.GetValidShScripts(Path.Combine(gitVSHookFolderPath, hookFolder));
                 GitHookManager.CreateGitHookScript(scripts, gitHookFolderPath, hookType);
+                ConfigManager.Instance.DeleteScriptEntry(hookType, e.FullPath);
             }
         }
 
@@ -181,6 +186,62 @@ namespace GitHooksVS
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Processes the Git hook folder and updates the configuration.
+        /// </summary>
+        /// <param name="gitVSHookFolderPath">The path to the Git hook folder.</param>
+        public void ProcessGitHookFolder(string gitVSHookFolderPath)
+        {
+            if (!Directory.Exists(gitVSHookFolderPath))
+                return;
+
+            var subfolders = Directory.GetDirectories(gitVSHookFolderPath);
+            foreach (var subfolder in subfolders)
+            {
+                var folderName = Path.GetFileName(subfolder);
+                if (GitHookManager.TryParseHookFolder(folderName, out HookType hookType))
+                {
+                    var validScripts = GitHookManager.GetValidShScripts(subfolder);
+                    var newScripts = new List<ScriptEntry>();
+                    var deletedScripts = new List<ScriptEntry>();
+
+                    foreach (var script in validScripts)
+                    {
+                        if (!ConfigManager.Instance.ScriptEntryExists(hookType, script))
+                        {
+                            newScripts.Add(new ScriptEntry { FilePath = script, Enabled = true });
+                        }
+                    }
+
+                    var existingScripts = ConfigManager.Instance.GetScriptEntries(hookType);
+                    foreach (var existingScript in existingScripts)
+                    {
+                        if (!validScripts.Contains(existingScript.FilePath))
+                        {
+                            deletedScripts.Add(existingScript);
+                        }
+                    }
+
+                    if (newScripts.Any() || deletedScripts.Any())
+                    {
+                        foreach (var script in deletedScripts)
+                        {
+                            ConfigManager.Instance.DeleteScriptEntry(hookType, script.FilePath);
+                        }
+
+                        var enabledScripts = ConfigManager.Instance.GetEnabledScriptEntries(hookType);
+                        var allScripts = enabledScripts.Concat(newScripts).ToList();
+                        GitHookManager.CreateGitHookScript(allScripts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
+
+                        foreach (var script in newScripts)
+                        {
+                            ConfigManager.Instance.AddScriptEntry(hookType, script.FilePath, script.Enabled);
+                        }
+                    }
+                }
+            }
         }
 
     }
