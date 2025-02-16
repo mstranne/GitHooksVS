@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
 using Microsoft.VisualStudio.Shell.Interop;
+using System.ComponentModel.Design;
 
 namespace GitHooksVS
 {
@@ -27,9 +28,11 @@ namespace GitHooksVS
     /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
     /// </para>
     /// </remarks>
-    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [ProvideAutoLoad(UIContextGuids80.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideToolWindow(typeof(SettingsWindow))] // Registriert dein Tool Window
     [Guid(GitHooksVSPackage.PackageGuidString)]
+    [ProvideMenuResource("Menus.ctmenu", 1)]
     public sealed class GitHooksVSPackage : AsyncPackage
     {
         /// <summary>
@@ -73,6 +76,8 @@ namespace GitHooksVS
             {
                 Logger.Instance.WriteLine("Kein Git Repository gefunden.");
             }
+
+            await SettingsWindowCommand.InitializeAsync(this);
         }
 
         private OutputWindowPane GetOutputPane(DTE2 dte, string paneName)
@@ -85,7 +90,6 @@ namespace GitHooksVS
             }
             return outputWindow.OutputWindowPanes.Add(paneName);
         }
-
 
         #endregion
     }

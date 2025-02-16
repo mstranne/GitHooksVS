@@ -137,7 +137,7 @@ namespace GitHooksVS
             else
             {
                 Logger.Instance.WriteLine($"File ({e.FullPath}) not inside a valid Hook Folder", LogLevel.DEBUG_MESSAGE);
-                return;
+                return; 
             }
 
             if (e.ChangeType == WatcherChangeTypes.Changed)
@@ -148,7 +148,7 @@ namespace GitHooksVS
             {
                 Logger.Instance.WriteLine($"File {e.ChangeType}: {e.FullPath}", LogLevel.DEBUG_MESSAGE);
 
-                bool enableScript = ShowEnableScriptDialog(Path.GetFileName(e.FullPath));
+                bool enableScript = ShowEnableScriptDialog(Path.GetFileName(e.FullPath), hookType);
                 ConfigManager.Instance.AddScriptEntry(hookType, e.FullPath, enableScript);
 
                 if(enableScript)
@@ -219,7 +219,7 @@ namespace GitHooksVS
                     {
                         if (!ConfigManager.Instance.ScriptEntryExists(hookType, script))
                         {
-                            bool enableScript = ShowEnableScriptDialog(Path.GetFileName(script));
+                            bool enableScript = ShowEnableScriptDialog(Path.GetFileName(script), hookType);
                             newScripts.Add(new ScriptEntry { FilePath = script, Enabled = enableScript });
                         }
                     }
@@ -258,9 +258,9 @@ namespace GitHooksVS
         /// </summary>
         /// <param name="scriptName">The name of the new script.</param>
         /// <returns>True if the script should be enabled; otherwise, false.</returns>
-        private bool ShowEnableScriptDialog(string scriptName)
+        private bool ShowEnableScriptDialog(string scriptName, HookType hookType)
         {
-            string message = $"Do you want to enable the new script: {scriptName} ?\n";
+            string message = $"Do you want to enable the new {GitHookManager.HookScriptNameLookup[hookType]} script: {scriptName} ?\n";
             string title = "Enable New Script";
             var result = VsShellUtilities.ShowMessageBox(
                 ServiceProvider.GlobalProvider,

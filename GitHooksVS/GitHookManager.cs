@@ -28,7 +28,7 @@ namespace GitHooksVS
             { HookType.POST_MERGE, "\"$1\"" }
         };
 
-        private static readonly Dictionary<HookType, string> HookScriptNameLookup = new Dictionary<HookType, string>
+        public static readonly Dictionary<HookType, string> HookScriptNameLookup = new Dictionary<HookType, string>
         {
             { HookType.PRE_COMMIT, "pre-commit" },
             { HookType.POST_CHECKOUT, "post-checkout" },

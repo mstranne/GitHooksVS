@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
+    <!--This is the file that defines the IDs for all the commands exposed by VisualStudio.-->
+    <Extern href="stdidcmd.h" />
+
+    <!--This header contains the command ids for the menus provided by the shell.-->
+    <Extern href="vsshlids.h"/>
+
+    <!--This header contains the image monikers for various images-->
+    <Include href="KnownImageIds.vsct"/>
+
+    <Commands>
+        <Groups>
+            <!-- Define a minimal group -->
+            <Group guid="70c52342-4fbf-4640-a8d2-bb081c23c135" id="MyCommandGroup" priority="0x0600">
+                <!-- Specify the parent menu where this group will appear -->
+                <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+            </Group>
+        </Groups>
+        
+        <Buttons>
+            <!-- Define your button -->
+            <Button guid="70c52342-4fbf-4640-a8d2-bb081c23c135" id="SettingsWindowCommandId" priority="0x0100" type="Button">
+                <Parent guid="70c52342-4fbf-4640-a8d2-bb081c23c135" id="MyCommandGroup" />
+                <Icon guid="ImageCatalogGuid" id="GoToNext"/>
+                <Strings>
+                    <ButtonText>Manage Git Hooks</ButtonText>
+                </Strings>
+            </Button>
+        </Buttons>
+    </Commands>
+    <Symbols>
+        <!-- Define GUIDs and IDs -->
+        <GuidSymbol name="70c52342-4fbf-4640-a8d2-bb081c23c135" value="{70c52342-4fbf-4640-a8d2-bb081c23c135}">
+            <IDSymbol name="MyCommandGroup" value="0x1000" />
+            <IDSymbol name="SettingsWindowCommandId" value="0x0100" />
+        </GuidSymbol>
+
+    </Symbols>
+</CommandTable>
