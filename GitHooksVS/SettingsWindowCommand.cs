@@ -41,14 +41,10 @@ namespace GitHooksVS
             commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
 
             var menuCommandID = new CommandID(CommandSet, CommandId);
-            var menuItem = new OleMenuCommand(this.Execute, menuCommandID)
-            {
-                Enabled = true, // Ensure the command is enabled
-                Visible = true // Ensure the command is visible (optional
-            };
-
+            var menuItem = new MenuCommand(this.Execute, menuCommandID);
             commandService.AddCommand(menuItem);
-            System.Diagnostics.Debug.WriteLine("Command added to CommandService.");
+
+            Logger.Instance.WriteLine("Command added to CommandService.");
         }
 
         /// <summary>
@@ -92,7 +88,21 @@ namespace GitHooksVS
         /// <param name="e">The event args.</param>
         private void Execute(object sender, EventArgs e)
         {
-            this.package.JoinableTaskFactory.RunAsync(async delegate
+            ThreadHelper.ThrowIfNotOnUIThread();
+            string message = "Hello World!";
+            string title = "Command";
+
+            // Show a message box to prove we were here
+            VsShellUtilities.ShowMessageBox(
+                (IServiceProvider)this.ServiceProvider,
+                message,
+                title,
+                OLEMSGICON.OLEMSGICON_INFO,
+                OLEMSGBUTTON.OLEMSGBUTTON_OK,
+                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+
+            /*
+            _ = this.package.JoinableTaskFactory.RunAsync(async delegate
             {
                 ToolWindowPane window = await this.package.ShowToolWindowAsync(typeof(SettingsWindow), 0, true, this.package.DisposalToken);
                 if ((null == window) || (null == window.Frame))
@@ -100,6 +110,7 @@ namespace GitHooksVS
                     throw new NotSupportedException("Cannot create tool window");
                 }
             });
+            */
         }
     }
 }
