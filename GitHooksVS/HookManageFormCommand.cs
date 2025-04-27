@@ -12,7 +12,7 @@ namespace GitHooksVS
     /// <summary>
     /// Command handler
     /// </summary>
-    internal sealed class Command
+    internal sealed class HookManageFormCommand
     {
         /// <summary>
         /// Command ID.
@@ -22,7 +22,7 @@ namespace GitHooksVS
         /// <summary>
         /// Command menu group (command set GUID).
         /// </summary>
-        public static readonly Guid CommandSet = new Guid("b4cad14e-25c1-40fe-8055-fcdd0f73aedb");
+        public static readonly Guid CommandSet = new Guid("d86b7875-4d46-415f-a784-bb34c761a594");
 
         /// <summary>
         /// VS Package that provides this command, not null.
@@ -30,12 +30,12 @@ namespace GitHooksVS
         private readonly AsyncPackage package;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Command"/> class.
+        /// Initializes a new instance of the <see cref="HookManageFormCommand"/> class.
         /// Adds our command handlers for menu (commands must exist in the command table file)
         /// </summary>
         /// <param name="package">Owner package, not null.</param>
         /// <param name="commandService">Command service to add command to, not null.</param>
-        private Command(AsyncPackage package, OleMenuCommandService commandService)
+        private HookManageFormCommand(AsyncPackage package, OleMenuCommandService commandService)
         {
             this.package = package ?? throw new ArgumentNullException(nameof(package));
             commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
@@ -48,7 +48,7 @@ namespace GitHooksVS
         /// <summary>
         /// Gets the instance of the command.
         /// </summary>
-        public static Command Instance
+        public static HookManageFormCommand Instance
         {
             get;
             private set;
@@ -71,35 +71,29 @@ namespace GitHooksVS
         /// <param name="package">Owner package, not null.</param>
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            // Switch to the main thread - the call to AddCommand in Command's constructor requires
+            // Switch to the main thread - the call to AddCommand in HookManageFormCommand's constructor requires
             // the UI thread.
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
-            OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-            Instance = new Command(package, commandService);
+            OleMenuCommandService commandService = await package.GetServiceAsync((typeof(IMenuCommandService))) as OleMenuCommandService;
+            Instance = new HookManageFormCommand(package, commandService);
         }
 
         /// <summary>
-        /// This function is the callback used to execute the command when the menu item is clicked.
-        /// See the constructor to see how the menu item is associated with this function using
-        /// OleMenuCommandService service and MenuCommand class.
+        /// Shows the tool window when the menu item is clicked.
         /// </summary>
-        /// <param name="sender">Event sender.</param>
-        /// <param name="e">Event args.</param>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event args.</param>
         private void Execute(object sender, EventArgs e)
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            string message = string.Format(CultureInfo.CurrentCulture, "Inside {0}.MenuItemCallback()", this.GetType().FullName);
-            string title = "Command";
-
-            // Show a message box to prove we were here
-            VsShellUtilities.ShowMessageBox(
-                this.package,
-                message,
-                title,
-                OLEMSGICON.OLEMSGICON_INFO,
-                OLEMSGBUTTON.OLEMSGBUTTON_OK,
-                OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+            this.package.JoinableTaskFactory.RunAsync(async delegate
+            {
+                ToolWindowPane window = await this.package.ShowToolWindowAsync(typeof(HookManageForm), 0, true, this.package.DisposalToken);
+                if ((null == window) || (null == window.Frame))
+                {
+                    throw new NotSupportedException("Cannot create tool window");
+                }
+            });
         }
     }
 }

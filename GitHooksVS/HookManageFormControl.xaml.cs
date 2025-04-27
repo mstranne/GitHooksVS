@@ -5,14 +5,14 @@ using System.Windows.Controls;
 namespace GitHooksVS
 {
     /// <summary>
-    /// Interaction logic for SettingsWindowControl.
+    /// Interaction logic for HookManageFormControl.
     /// </summary>
-    public partial class SettingsWindowControl : UserControl
+    public partial class HookManageFormControl : UserControl
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="SettingsWindowControl"/> class.
+        /// Initializes a new instance of the <see cref="HookManageFormControl"/> class.
         /// </summary>
-        public SettingsWindowControl()
+        public HookManageFormControl()
         {
             this.InitializeComponent();
         }
@@ -28,7 +28,7 @@ namespace GitHooksVS
         {
             MessageBox.Show(
                 string.Format(System.Globalization.CultureInfo.CurrentUICulture, "Invoked '{0}'", this.ToString()),
-                "SettingsWindow");
+                "HookManageForm");
         }
     }
 }

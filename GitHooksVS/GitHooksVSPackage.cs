@@ -1,13 +1,15 @@
-﻿using EnvDTE;
+﻿
+using EnvDTE;
 using EnvDTE80;
+using Microsoft;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
-using Microsoft.VisualStudio.Shell.Interop;
-using System.ComponentModel.Design;
 
 namespace GitHooksVS
 {
@@ -30,15 +32,18 @@ namespace GitHooksVS
     /// </remarks>
     [ProvideAutoLoad(UIContextGuids80.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [ProvideToolWindow(typeof(SettingsWindow))] // Registriert dein Tool Window
     [Guid(GitHooksVSPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    public sealed class GitHooksVSPackage : AsyncPackage
+    [ProvideToolWindow(typeof(HookManageForm))]
+    public sealed class GitHooksVSPackage : AsyncPackage, IVsSolutionEvents
     {
         /// <summary>
         /// GitHooksVSPackage GUID string.
         /// </summary>
-        public const string PackageGuidString = "7a56b71f-f95a-414e-81e3-4aadc5759e59";
+        public const string PackageGuidString = "b857a08d-eb4f-4c9d-9814-9a39114e0d02";
+
+        private uint _solutionEventsCookie;
+        private IVsSolution _solution;
 
         #region Package Members
 
@@ -51,34 +56,40 @@ namespace GitHooksVS
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
+            await base.InitializeAsync(cancellationToken, progress);
+
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-            // Zugriff auf das Output Window erhalten
+
+            // Get the IVsSolution service
+            _solution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
+            Assumes.Present(_solution);
+
+            // Register for solution events
+            _solution.AdviseSolutionEvents(this, out _solutionEventsCookie);
+
+            Logger.Instance.WriteLine("Hello World from Git Hook Extension!", LogLevel.DEBUG_MESSAGE);
             DTE2 dte = (DTE2)await GetServiceAsync(typeof(DTE));
             OutputWindowPane outputPane = GetOutputPane(dte, "Git Hook Extension");
-
-            // Initialize Logger
             Logger.Instance.Initialize(outputPane);
 
-            // "Hello World" ausgeben
-            Logger.Instance.WriteLine("Hello World from Git Hook Extension!", LogLevel.DEBUG_MESSAGE);
-
-            string solutionDir = Path.GetDirectoryName(dte.Solution.FullName);
-            GitHookFolderManager.Instance.Initialize(solutionDir);
-            string repoPath = GitHookFolderManager.Instance.GitRootFolder;
-            if (!string.IsNullOrEmpty(repoPath))
-            {
-                string repoName = new DirectoryInfo(repoPath).Name;
-                Logger.Instance.WriteLine($"Git Repository gefunden: {repoName}");
-            }
-            else
-            {
-                Logger.Instance.WriteLine("Kein Git Repository gefunden.");
-            }
-
-            await SettingsWindowCommand.InitializeAsync(this);
+            await HookManageFormCommand.InitializeAsync(this);
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            if (_solution != null && _solutionEventsCookie != 0)
+            {
+                _solution.UnadviseSolutionEvents(_solutionEventsCookie);
+                _solutionEventsCookie = 0;
+            }
+
+            base.Dispose(disposing);
+        }
+
 
         private OutputWindowPane GetOutputPane(DTE2 dte, string paneName)
         {
@@ -90,6 +101,59 @@ namespace GitHooksVS
             }
             return outputWindow.OutputWindowPanes.Add(paneName);
         }
+
+        private string GetSolutionPath()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread(); // Sicherstellen, dass wir auf dem UI-Thread sind
+            DTE2 dte = (DTE2)GetService(typeof(DTE));
+            if (dte?.Solution != null && !string.IsNullOrEmpty(dte.Solution.FullName))
+            {
+                return dte.Solution.FullName; // Gibt den vollständigen Pfad zur Solution-Datei zurück
+            }
+            return null;
+        }
+
+
+        // IVsSolutionEvents-Implementierung
+        public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            
+            string solutionPath = GetSolutionPath();
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
+                Logger.Instance.WriteLine($"opened Solution: {solutionPath}", LogLevel.DEBUG_MESSAGE);
+                GitHookFolderManager.Instance.Initialize(solutionPath);
+                string repoPath = GitHookFolderManager.Instance.GitRootFolder;
+                if (!string.IsNullOrEmpty(repoPath))
+                {
+                    string repoName = new DirectoryInfo(repoPath).Name;
+                    Logger.Instance.WriteLine($"Git Repository found: {repoName}");
+                }
+                else
+                {
+                    Logger.Instance.WriteLine("no Git Repository found.");
+                }
+            }
+            return VSConstants.S_OK;
+        }
+
+        public int OnAfterCloseSolution(object pUnkReserved)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Logger.Instance.WriteLine("Solution geclosed!", LogLevel.DEBUG_MESSAGE);
+            return VSConstants.S_OK;
+        }
+
+        // Andere IVsSolutionEvents-Methoden (falls nicht benötigt, einfach leer lassen)
+        public int OnBeforeCloseSolution(object pUnkReserved) => VSConstants.S_OK;
+        public int OnBeforeCloseProject(IVsHierarchy pHierarchy, int fRemoved) => VSConstants.S_OK;
+        public int OnAfterLoadProject(IVsHierarchy pStubHierarchy, IVsHierarchy pRealHierarchy) => VSConstants.S_OK;
+        public int OnAfterOpenProject(IVsHierarchy pHierarchy, int fAdded) => VSConstants.S_OK;
+        public int OnBeforeUnloadProject(IVsHierarchy pRealHierarchy, IVsHierarchy pStubHierarchy) => VSConstants.S_OK;
+        public int OnQueryCloseProject(IVsHierarchy pHierarchy, int fRemoving, ref int pfCancel) => VSConstants.S_OK;
+        public int OnQueryCloseSolution(object pUnkReserved, ref int pfCancel) => VSConstants.S_OK;
+        public int OnQueryUnloadProject(IVsHierarchy pRealHierarchy, ref int pfCancel) => VSConstants.S_OK;
 
         #endregion
     }

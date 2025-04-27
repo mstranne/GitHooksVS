@@ -31,17 +31,14 @@
     group; your package should define its own command set in order to avoid collisions
     with command ids defined by other packages. -->
 
-    <!-- In this section you can define new menu groups. A menu group is a container for
-         other menus or buttons (commands); from a visual point of view you can see the
-         group as the part of a menu contained between two lines. The parent of a group
-         must be a menu. -->
     <Groups>
-      <Group guid="guidGitHooksVSPackageCmdSet" id="MyMenuGroup" priority="0x0600">
-        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
-      </Group>
+        <Group guid="guidGitHooksVSPackageCmdSet" id="MyMenuGroup" priority="0x0600">
+            <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+        </Group>
     </Groups>
 
-    <!--Buttons section. -->
+
+      <!--Buttons section. -->
     <!--This section defines the elements the user can interact with, like a menu command or a button
         or combo box in a toolbar. -->
     <Buttons>
@@ -52,13 +49,14 @@
               <CommandFlag>DefaultInvisible</CommandFlag>
               <CommandFlag>DynamicVisibility</CommandFlag>
           If you do not want an image next to your command, remove the Icon node /> -->
-      <Button guid="guidGitHooksVSPackageCmdSet" id="CommandId" priority="0x0100" type="Button">
-        <Parent guid="guidGitHooksVSPackageCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic1" />
-        <Strings>
-          <ButtonText>Manage Git Hooks</ButtonText>
-        </Strings>
-      </Button>
+        <Button guid="guidGitHooksVSPackageCmdSet" id="HookManageFormCommandId" priority="0x0100" type="Button">
+            <Parent guid="guidGitHooksVSPackageCmdSet" id="MyMenuGroup" />
+            <Icon guid="guidImages" id="bmpPic1" />
+            <Strings>
+                <ButtonText>Manage Git Hooks</ButtonText>
+            </Strings>
+        </Button>
+
     </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
@@ -68,21 +66,22 @@
             bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
             inside a button definition. An important aspect of this declaration is that the element id
             must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
-      <Bitmap guid="guidImages" href="Resources\Command.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
+      <Bitmap guid="guidImages" href="Resources\HookManageFormCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
     </Bitmaps>
   </Commands>
 
   <Symbols>
     <!-- This is the package guid. -->
-    <GuidSymbol name="guidGitHooksVSPackage" value="{7a56b71f-f95a-414e-81e3-4aadc5759e59}" />
+    <GuidSymbol name="guidGitHooksVSPackage" value="{b857a08d-eb4f-4c9d-9814-9a39114e0d02}" />
 
     <!-- This is the guid used to group the menu commands together -->
-    <GuidSymbol name="guidGitHooksVSPackageCmdSet" value="{b4cad14e-25c1-40fe-8055-fcdd0f73aedb}">
+    <GuidSymbol name="guidGitHooksVSPackageCmdSet" value="{d86b7875-4d46-415f-a784-bb34c761a594}">
+      <IDSymbol name="HookManageFormCommandId" value="0x0100" />
       <IDSymbol name="MyMenuGroup" value="0x1020" />
-      <IDSymbol name="CommandId" value="0x0100" />
     </GuidSymbol>
+      
 
-    <GuidSymbol name="guidImages" value="{cc042c3d-8da5-42bd-8bce-b8e9cee9fec2}" >
+      <GuidSymbol name="guidImages" value="{db24b56c-c1bf-4820-8d50-b821de81a89b}" >
       <IDSymbol name="bmpPic1" value="1" />
       <IDSymbol name="bmpPic2" value="2" />
       <IDSymbol name="bmpPicSearch" value="3" />
