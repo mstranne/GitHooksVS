@@ -50,6 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Command.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="GitHookManager.cs" />
     <Compile Include="GitHookFolderManager.cs" />
@@ -73,6 +74,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Design" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="LibGit2Sharp">
@@ -90,6 +92,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <VSCTCompile Include="GitHooksVSPackage.vsct" />
     <Content Include="lib\win32\arm64\git2-3f4182d.dll" />
     <Content Include="lib\win32\x64\git2-3f4182d.dll">
       <IncludeInVSIX>true</IncludeInVSIX>
