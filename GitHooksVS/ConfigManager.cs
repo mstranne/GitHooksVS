@@ -156,5 +156,33 @@ namespace GitHooksVS
             File.WriteAllText(configFilePath, json);
             Logger.Instance.WriteLine("Config saved!", LogLevel.DEBUG_MESSAGE);
         }
+
+        internal void UpdateScriptEntry(HookType key, string filePath, bool isChecked)
+        {
+            // Check if the HookType exists in the dictionary
+            if (config.HookScripts.ContainsKey(key))
+            {
+                // Find the script entry with the matching file path
+                var scriptEntry = config.HookScripts[key].FirstOrDefault(e => e.FilePath == filePath);
+                if (scriptEntry != null)
+                {
+                    // Update the Enabled property
+                    scriptEntry.Enabled = isChecked;
+
+                    // Save the updated configuration
+                    SaveConfig();
+
+                    Logger.Instance.WriteLine($"Script entry updated: {filePath} (Enabled: {isChecked})", LogLevel.DEBUG_MESSAGE);
+                }
+                else
+                {
+                    Logger.Instance.WriteLine($"Script entry not found: {filePath}", LogLevel.DEBUG_MESSAGE);
+                }
+            }
+            else
+            {
+                Logger.Instance.WriteLine($"HookType not found: {key}", LogLevel.DEBUG_MESSAGE);
+            }
+        }
     }
 }

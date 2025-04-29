@@ -45,8 +45,6 @@ namespace GitHooksVS
         private uint _solutionEventsCookie;
         private IVsSolution _solution;
 
-        #region Package Members
-
         /// <summary>
         /// Initialization of the package; this method is called right after the package is sited, so this is the place
         /// where you can put all the initialization code that rely on services provided by VisualStudio.
@@ -75,6 +73,13 @@ namespace GitHooksVS
             Logger.Instance.Initialize(outputPane);
 
             await HookManageFormCommand.InitializeAsync(this);
+
+            // Check if a solution is already open
+            if (IsSolutionOpen())
+            {
+                Logger.Instance.WriteLine("A solution is already open during initialization.", LogLevel.DEBUG_MESSAGE);
+                InitHooksForCurrentFolder();
+            }
         }
 
         protected override void Dispose(bool disposing)
@@ -113,16 +118,17 @@ namespace GitHooksVS
             return null;
         }
 
-
-        // IVsSolutionEvents-Implementierung
-        public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
+        /// <summary>
+        /// Initializes Git hooks for the current solution folder.
+        /// </summary>
+        private void InitHooksForCurrentFolder()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            
+
             string solutionPath = GetSolutionPath();
             if (!string.IsNullOrEmpty(solutionPath))
             {
-                Logger.Instance.WriteLine($"opened Solution: {solutionPath}", LogLevel.DEBUG_MESSAGE);
+                Logger.Instance.WriteLine($"Opened Solution: {solutionPath}", LogLevel.DEBUG_MESSAGE);
                 GitHookFolderManager.Instance.Initialize(solutionPath);
                 string repoPath = GitHookFolderManager.Instance.GitRootFolder;
                 if (!string.IsNullOrEmpty(repoPath))
@@ -132,9 +138,28 @@ namespace GitHooksVS
                 }
                 else
                 {
-                    Logger.Instance.WriteLine("no Git Repository found.");
+                    Logger.Instance.WriteLine("No Git Repository found.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Uninitializes Git hooks for the current solution folder.
+        /// </summary>
+        private void UninitializeHooks()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            Logger.Instance.WriteLine("Uninitializing Git hooks for the current solution.", LogLevel.DEBUG_MESSAGE);
+            GitHookFolderManager.Instance.Uninitialize();
+        }
+
+
+        // IVsSolutionEvents-Implementierung
+        public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            InitHooksForCurrentFolder();
             return VSConstants.S_OK;
         }
 
@@ -142,6 +167,7 @@ namespace GitHooksVS
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             Logger.Instance.WriteLine("Solution geclosed!", LogLevel.DEBUG_MESSAGE);
+            UninitializeHooks();
             return VSConstants.S_OK;
         }
 
@@ -155,6 +181,19 @@ namespace GitHooksVS
         public int OnQueryCloseSolution(object pUnkReserved, ref int pfCancel) => VSConstants.S_OK;
         public int OnQueryUnloadProject(IVsHierarchy pRealHierarchy, ref int pfCancel) => VSConstants.S_OK;
 
-        #endregion
+        private bool IsSolutionOpen()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread(); // Ensure we are on the UI thread
+
+            object value;
+            int hr = _solution.GetProperty((int)__VSPROPID.VSPROPID_IsSolutionOpen, out value);
+            if (ErrorHandler.Succeeded(hr) && value is bool isOpen)
+            {
+                return isOpen;
+            }
+
+            return false;
+        }
+
     }
 }

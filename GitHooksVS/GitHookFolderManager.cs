@@ -12,34 +12,72 @@ using Microsoft.VisualStudio;
 
 namespace GitHooksVS
 {
+    /// <summary>
+    /// Manages Git hook folders and their configurations.
+    /// </summary>
     internal class GitHookFolderManager
     {
         /// <summary>
-        ///  implementation ensures that the singleton instance is created in a thread-safe manner 
-        ///  without requiring explicit locks or synchronization. This is particularly important in 
-        ///  multithreaded applications where multiple threads might try to access the singleton instance simultaneously.
-        ///  
-        /// Lazy<T> ensures that the singleton instance is only created when it is first accessed.
+        /// Singleton instance of the <see cref="GitHookFolderManager"/> class.
         /// </summary>
         private static readonly Lazy<GitHookFolderManager> instance = new Lazy<GitHookFolderManager>(() => new GitHookFolderManager());
 
+        /// <summary>
+        /// Indicates whether the manager has been initialized.
+        /// </summary>
         private bool initialized = false;
+
+        /// <summary>
+        /// The root folder of the Git repository.
+        /// </summary>
         private string gitRootFolder;
-        private string gitVSHookFolderPath;     // Folder .githooks
-        private string gitHookFolderPath;       // Folder .git/hooks
+
+        /// <summary>
+        /// The path to the .githooks folder.
+        /// </summary>
+        private string gitVSHookFolderPath;
+
+        /// <summary>
+        /// The path to the .git/hooks folder.
+        /// </summary>
+        private string gitHookFolderPath;
+
+        /// <summary>
+        /// File system watcher for monitoring changes in the .githooks folder.
+        /// </summary>
         private FileSystemWatcher fileWatcher;
 
-        // Private constructor to prevent instantiation from outside
+        /// <summary>
+        /// Private constructor to prevent instantiation from outside.
+        /// </summary>
         private GitHookFolderManager()
         {
-
         }
 
         /// <summary>
-        /// Inizialized the GitHookFolderManager, by finding Root Folder of Git
-        /// 
+        /// Gets the singleton instance of the <see cref="GitHookFolderManager"/>.
         /// </summary>
-        /// <param name="solutionDir"></param>
+        public static GitHookFolderManager Instance
+        {
+            get
+            {
+                return instance.Value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the Git repository path.
+        /// </summary>
+        public string GitRootFolder
+        {
+            get { return gitRootFolder; }
+            private set { gitRootFolder = value; }
+        }
+
+        /// <summary>
+        /// Initializes the GitHookFolderManager by discovering the Git root folder and setting up file watchers.
+        /// </summary>
+        /// <param name="solutionDir">The directory of the current solution.</param>
         public void Initialize(string solutionDir)
         {
             try
@@ -47,7 +85,7 @@ namespace GitHooksVS
                 if (initialized)
                     return;
 
-                // Überprüfen der Initialisierung von LibGit2Sharp
+                // Check the initialization of LibGit2Sharp
                 GlobalSettings.Version.ToString();
 
                 string repoPath = Repository.Discover(solutionDir);
@@ -85,23 +123,44 @@ namespace GitHooksVS
             }
         }
 
-        public static GitHookFolderManager Instance
+        /// <summary>
+        /// Uninitializes the GitHookFolderManager by resetting its state and unregistering file watchers.
+        /// </summary>
+        public void Uninitialize()
         {
-            get
+            if(!initialized)
+                return;
+
+            if (fileWatcher != null)
             {
-                return instance.Value;
+                fileWatcher.EnableRaisingEvents = false;
+                fileWatcher.Changed -= OnChanged;
+                fileWatcher.Created -= OnChanged;
+                fileWatcher.Deleted -= OnChanged;
+                fileWatcher.Dispose();
+                fileWatcher = null;
             }
+
+            initialized = false;
+            gitRootFolder = null;
+            gitVSHookFolderPath = null;
+            gitHookFolderPath = null;
+
+            Logger.Instance.WriteLine("GitHookFolderManager has been uninitialized.", LogLevel.DEBUG_MESSAGE);
         }
 
         /// <summary>
-        /// Gets or sets the Git repository path.
+        /// Finalizer to ensure cleanup when the object is garbage collected.
         /// </summary>
-        public string GitRootFolder
+        ~GitHookFolderManager()
         {
-            get { return gitRootFolder; }
-            private set { gitRootFolder = value; }
+            Uninitialize();
         }
 
+        /// <summary>
+        /// Checks if the .githooks folder exists and sets up a file watcher for it.
+        /// </summary>
+        /// <returns>True if the folder exists and the watcher is set up; otherwise, false.</returns>
         private bool CheckForGitHookFolder()
         {
             gitVSHookFolderPath = Path.Combine(gitRootFolder, ".githooks");
@@ -127,6 +186,11 @@ namespace GitHooksVS
             return false;
         }
 
+        /// <summary>
+        /// Handles file system changes in the .githooks folder.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The event data.</param>
         private void OnChanged(object sender, FileSystemEventArgs e)
         {
             string hookFolder = GetSubfolderAndFile(e.FullPath);
@@ -137,7 +201,7 @@ namespace GitHooksVS
             else
             {
                 Logger.Instance.WriteLine($"File ({e.FullPath}) not inside a valid Hook Folder", LogLevel.DEBUG_MESSAGE);
-                return; 
+                return;
             }
 
             if (e.ChangeType == WatcherChangeTypes.Changed)
@@ -151,12 +215,11 @@ namespace GitHooksVS
                 bool enableScript = ShowEnableScriptDialog(Path.GetFileName(e.FullPath), hookType);
                 ConfigManager.Instance.AddScriptEntry(hookType, e.FullPath, enableScript);
 
-                if(enableScript)
+                if (enableScript)
                 {
                     var enabledScipts = ConfigManager.Instance.GetEnabledScriptEntries(hookType);
                     GitHookManager.CreateGitHookScript(enabledScipts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
                 }
-
             }
             else if (e.ChangeType == WatcherChangeTypes.Deleted)
             {
@@ -195,6 +258,12 @@ namespace GitHooksVS
 
             return null;
         }
+
+        public String GetCurrentHookFolder()
+        { 
+            return gitHookFolderPath; 
+        }
+
 
         /// <summary>
         /// Processes the Git hook folder and updates the configuration.
@@ -245,7 +314,7 @@ namespace GitHooksVS
                         GitHookManager.CreateGitHookScript(allScripts.Select(s => s.FilePath).ToList(), gitHookFolderPath, hookType);
 
                         foreach (var script in newScripts)
-                        {                            
+                        {
                             ConfigManager.Instance.AddScriptEntry(hookType, script.FilePath, script.Enabled);
                         }
                     }
@@ -257,6 +326,7 @@ namespace GitHooksVS
         /// Shows a message box to the user to decide whether a new script should be enabled or disabled.
         /// </summary>
         /// <param name="scriptName">The name of the new script.</param>
+        /// <param name="hookType">The type of the Git hook.</param>
         /// <returns>True if the script should be enabled; otherwise, false.</returns>
         private bool ShowEnableScriptDialog(string scriptName, HookType hookType)
         {
@@ -272,6 +342,5 @@ namespace GitHooksVS
 
             return result == (int)VSConstants.MessageBoxResult.IDYES;
         }
-
     }
 }

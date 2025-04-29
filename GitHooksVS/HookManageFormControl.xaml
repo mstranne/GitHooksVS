@@ -11,8 +11,38 @@
              Name="MyToolWindow">
     <Grid>
         <StackPanel Orientation="Vertical">
-            <TextBlock Margin="10" HorizontalAlignment="Center">HookManageForm</TextBlock>
-            <Button Content="Click me!" Click="button1_Click" Width="120" Height="80" Name="button1"/>
+            <!-- Status Section -->
+            <StackPanel Orientation="Horizontal" Margin="10" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding GithooksStatusText}" VerticalAlignment="Center" FontSize="14" />
+                <Ellipse Width="16" Height="16" Margin="10,0,0,0" VerticalAlignment="Center"
+                         Fill="{Binding GithooksStatusColor}" />
+            </StackPanel>
+
+
+            <!-- Dynamische Listen -->
+            <ItemsControl ItemsSource="{Binding CheckboxLists}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Vertical" Margin="10">
+                            <!-- Überschrift -->
+                            <TextBlock Text="{Binding Header}" FontWeight="Bold" FontSize="16" Margin="0,0,0,5" />
+                            <!-- Liste der Checkboxen -->
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="5">
+                                            <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Margin="5,0,0,0" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Button Content="Close" Click="button1_Click" Width="120" Height="40" x:Name="button1"/>
         </StackPanel>
     </Grid>
 </UserControl>
